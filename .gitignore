@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+node_modules/
+.git/
+input/done/*
+input/error/*
+input/skip/*
+logs/**/*.jsonl
+data/chroma_db/
+*.lnk

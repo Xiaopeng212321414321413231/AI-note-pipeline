@@ -1,0 +1,293 @@
+"""
+AI 多模态笔记处理流水线 v2.0
+任何输入（图片/音频/PDF/URL/文本） 提取文字  价值分类  深度加工（检索+联网） 风格重写  Obsidian
+"""
+import os
+import sys
+import time
+import logging
+import json
+from datetime import datetime
+import hashlib
+import argparse
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+#  模块导入 
+from ocr import extract_text_from_image
+from transcriber import transcribe_audio
+from ai_rewrite import rewrite_text_with_ai, classify_topic, repair_ocr_text
+from vector_store import ObsidianVectorStore
+from classifier import classify_content
+from search import search_web, fetch_webpage
+
+#  配置（注意变量名：ZHIPUAI_API_KEY 不是 ZHIPU_API_KEY）
+ZHIPUAI_API_KEY = os.getenv("ZHIPUAI_API_KEY")
+OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH", "G:/ai软件/obsidian/ai新闻")
+TESSERACT_PATH = os.getenv("TESSERACT_PATH", "C:/Program Files/Tesseract-OCR/tesseract.exe")
+CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "data/chroma_db")
+INPUT_DIR = os.getenv("INPUT_DIR", "input")
+OUTPUT_DIR = os.path.join(OBSIDIAN_VAULT_PATH, "AI生成笔记")
+TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(INPUT_DIR, exist_ok=True)
+os.makedirs("logs", exist_ok=True)
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('logs/app.log', encoding='utf-8'),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
+
+#  全局向量库 
+_vector_store = None
+
+def get_vector_store():
+    global _vector_store
+    if _vector_store is None:
+        print("   [处理] 初始化向量数据库...")
+        _vector_store = ObsidianVectorStore(
+            api_key="",
+            vault_path=OBSIDIAN_VAULT_PATH,
+            db_path=CHROMA_DB_PATH
+        )
+        _vector_store.index_vault()
+        stats = _vector_store.get_stats()
+        print(f"   向量库中 {stats['total_notes']} 篇笔记")
+    return _vector_store
+
+#  提取文字 
+def extract_text_from_file(file_path: str) -> str:
+    ext = os.path.splitext(file_path)[1].lower()
+    if ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'):
+        print(f"   ️ 图片 OCR...")
+        ocr_text = extract_text_from_image(file_path)
+        try:
+            return repair_ocr_text(ZHIPUAI_API_KEY, ocr_text)
+        except Exception:
+            return ocr_text
+    elif ext == '.pdf':
+        print(f"   [文档] PDF 提取...")
+        try:
+            from ocr import extract_text_from_file as pdf_extract
+            return pdf_extract(file_path, TESSERACT_PATH)
+        except Exception:
+            import fitz
+            doc = fitz.open(file_path)
+            text = "\n".join(page.get_text() for page in doc)
+            doc.close()
+            return text.strip()
+    elif ext in ('.mp3', '.wav', '.m4a', '.flac', '.aac', '.ogg', '.amr'):
+        print(f"   [音频] 音频转写...")
+        return transcribe_audio(file_path)
+    elif ext == '.docx':
+        from docx import Document
+        import zipfile, os as _os
+        doc = Document(file_path)
+        docx_text = '\n'.join(p.text for p in doc.paragraphs if p.text.strip())
+        # 提取 docx 内嵌图片并 OCR
+        img_texts = []
+        tmp_dir = _os.path.join(_os.path.dirname(file_path), '_docx_imgs')
+        _os.makedirs(tmp_dir, exist_ok=True)
+        with zipfile.ZipFile(file_path, 'r') as z:
+            for name in z.namelist():
+                if name.startswith('word/media/') and name.lower().endswith(('.png','.jpg','.jpeg')):
+                    img_path = _os.path.join(tmp_dir, _os.path.basename(name))
+                    with open(img_path, 'wb') as f: f.write(z.read(name))
+                    ocr_result = extract_text_from_image(img_path)
+                    if ocr_result.strip():
+                        img_texts.append(ocr_result)
+        for f in _os.listdir(tmp_dir):
+            try: _os.remove(_os.path.join(tmp_dir, f))
+            except: pass
+        try: _os.rmdir(tmp_dir)
+        except: pass
+        combined = docx_text
+        if img_texts:
+            combined += '\n\n=== 图片内容 ===\n\n' + '\n\n'.join(img_texts)
+        try:
+            return repair_ocr_text(ZHIPUAI_API_KEY, combined)
+        except:
+            return combined
+    elif ext in ('.md', '.txt'):
+        print(f"   [文本] 读取文本...")
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return f.read().strip()
+    else:
+        raise ValueError(f"不支持的文件格式: {ext}")
+
+#  核心处理 
+def process_content(raw_text: str, source_name: str) -> str:
+    raw_text = raw_text.strip()
+    if not raw_text or len(raw_text) < 10:
+        print(f"   [文档] 内容较短（{len(raw_text)}字符），直接保存原文: {source_name}")
+        return raw_text  # 短内容也保留
+
+    category = classify_content(ZHIPUAI_API_KEY, raw_text)
+    print(f"   [定位] 分类: {category}")
+
+    if category == 'skip':
+        print(f"   ️ 无价值，丢弃: {source_name}")
+        return None
+    elif category == 'save_only':
+        print(f"    仅保存原文")
+        return raw_text
+
+    vector_store = get_vector_store()
+    topic = classify_topic(ZHIPUAI_API_KEY, raw_text)
+    if isinstance(topic, dict):
+        topic_name = topic.get("topic", "其他")
+    else:
+        topic_name = str(topic)
+    print(f"   [搜索] 话题: {topic_name}")
+
+    similar_docs, similar_metas = vector_store.retrieve_similar(
+        f"{topic_name} {raw_text[:200]}", n_results=3
+    )
+    style_notes = similar_docs if similar_docs else []
+    print(f"    参考笔记: {len(style_notes)} 篇")
+
+    web_context = ""
+    if len(style_notes) <= 1 and TAVILY_API_KEY:
+        print(f"   [网络] 联网搜索补充背景...")
+        web_context = search_web(f"{topic_name} {raw_text[:150]}", TAVILY_API_KEY)
+        if web_context:
+            print(f"   [完成] 联网获取 {len(web_context)} 字符")
+        else:
+            print(f"   ️ 联网无结果")
+
+    print(f"   ️ AI 风格重写...")
+    rewritten = rewrite_text_with_ai(
+        ZHIPUAI_API_KEY, raw_text, style_notes, topic
+    )
+    if not rewritten:
+        raise RuntimeError("AI 重写返回空结果")
+    print(f"   [完成] 重写完成 ({len(rewritten)} 字符)")
+    return rewritten
+
+#  保存 
+def save_result(content: str, filename: str):
+    if content is None or not content.strip():
+        print("   \u26a0\ufe0f \u5185\u5bb9\u4e3a\u7a7a\uff0c\u4e0d\u4fdd\u5b58")
+        return
+    out_path = os.path.join(OUTPUT_DIR, filename)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(content)
+        print(f"   \u2705 \u5df2\u4fdd\u5b58: {out_path}")
+    import json,datetime as _dt
+    os.makedirs("logs/daily", exist_ok=True)
+    log_path = os.path.join("logs", "daily", _dt.datetime.now().strftime("%Y-%m-%d") + ".jsonl")
+    with open(log_path, "a", encoding="utf-8") as lf:
+        lf.write(json.dumps({"time":_dt.datetime.now().strftime("%H:%M:%S"),"file":os.path.basename(filename),"chars":len(content),"path":os.path.abspath(out_path)}, ensure_ascii=False) + chr(10))
+def process_file(file_path: str):
+    file_name = os.path.basename(file_path)
+    print(f"\n[{file_name}]")
+    try:
+        raw_text = extract_text_from_file(file_path)
+        if not raw_text or len(raw_text.strip()) < 5:
+            print(f"   [警告]️ 未提取到有效文字")
+            # 音频短内容也保留，不丢弃
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in ('.mp3','.wav','.m4a','.flac','.aac','.ogg','.amr','.m4a'):
+                raw_text = raw_text or "(音频文件，转写无文字内容)"
+                _archive_file(file_path, "skip")
+            else:
+                _archive_file(file_path, "skip")
+            return
+
+        result = process_content(raw_text, file_name)
+        if result is None:
+            _archive_file(file_path, "skip")
+            return
+
+        base_name = os.path.splitext(file_name)[0]
+        save_result(result, f"{base_name}.md")
+        _archive_file(file_path, "done")
+
+    except Exception as e:
+        print(f"   [失败] 失败: {e}")
+        _archive_file(file_path, "error")
+
+def _archive_file(file_path: str, subdir: str):
+    dest_dir = os.path.join(INPUT_DIR, subdir)
+    os.makedirs(dest_dir, exist_ok=True)
+    dest = os.path.join(dest_dir, os.path.basename(file_path))
+    try:
+        os.rename(file_path, dest)
+    except Exception:
+        pass
+
+#  处理 URL 
+def process_url(url: str):
+    print(f"\n[网络] [{url[:60]}...]")
+    try:
+        import urllib.request
+        reader_url = f"https://r.jina.ai/{url}"
+        req = urllib.request.Request(reader_url, headers={"Accept": "text/plain"})
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            raw_text = resp.read().decode('utf-8')
+
+        if not raw_text or len(raw_text.strip()) < 50:
+            print(f"   [警告]️ 网页内容太短")
+            return
+
+        result = process_content(raw_text, url)
+        if result:
+            name = hashlib.md5(url.encode()).hexdigest()[:8]
+            save_result(result, f"web_{name}.md")
+    except Exception as e:
+        print(f"   [失败] 网页处理失败: {e}")
+
+#  批量处理 
+def process_batch():
+    if not os.path.isdir(INPUT_DIR):
+        print(f"input 目录不存在")
+        return
+    files = sorted([
+        os.path.join(INPUT_DIR, f) for f in os.listdir(INPUT_DIR)
+        if os.path.isfile(os.path.join(INPUT_DIR, f))
+        and not f.startswith('.')
+    ])
+    skip_dirs = {os.path.join(INPUT_DIR, d) for d in ('done', 'skip', 'error')}
+    files = [f for f in files if not any(f.startswith(d) for d in skip_dirs)]
+    if not files:
+        print("[失败] input 文件夹为空（无待处理文件）")
+        return
+    print(f"\n{'='*50}")
+    print(f"  共发现 {len(files)} 个文件")
+    print(f"{'='*50}\n")
+    for f in files:
+        process_file(f)
+    print(f"\n{'='*50}")
+    print(f"  完成！")
+    print(f"{'='*50}")
+
+#  主入口 
+def main():
+    parser = argparse.ArgumentParser(description="AI 多模态笔记处理流水线")
+    parser.add_argument("--watch", action="store_true", help="监听模式")
+    parser.add_argument("--file", type=str, help="处理单个文件")
+    parser.add_argument("--url", type=str, help="处理网页链接")
+    parser.add_argument("--batch", action="store_true", help="批量处理 input/")
+    args = parser.parse_args()
+
+
+
+    if args.file:
+        process_file(args.file)
+    elif args.url:
+        process_url(args.url)
+    elif args.watch:
+        from watcher import start_watcher
+        start_watcher(INPUT_DIR)
+    else:
+        process_batch()
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,141 @@
+2026-07-12 11:44:22,263 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:45:07,403 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:50:37,941 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:50:39,297 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:50:39,749 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:50:40,149 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:52:23,098 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:52:53,926 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:57:21,826 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:59:24,659 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 11:59:30,025 - INFO - No device provided, using cpu
+2026-07-12 11:59:30,028 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 11:59:34,913 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:00:39,725 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:06:15,302 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:06:19,602 - INFO - No device provided, using cpu
+2026-07-12 12:06:19,604 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:06:24,432 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:06:30,614 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:09:36,294 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:09:42,380 - INFO - No device provided, using cpu
+2026-07-12 12:09:42,382 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:09:49,791 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:09:56,634 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:19:04,116 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:19:08,232 - INFO - No device provided, using cpu
+2026-07-12 12:19:08,234 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:19:13,680 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:19:45,450 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:31:37,623 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:31:41,676 - INFO - No device provided, using cpu
+2026-07-12 12:31:41,678 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:31:46,691 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:32:09,324 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:36:52,461 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:36:56,375 - INFO - No device provided, using cpu
+2026-07-12 12:36:56,377 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:37:01,050 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:37:11,413 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:39:10,621 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:39:14,591 - INFO - No device provided, using cpu
+2026-07-12 12:39:14,593 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:39:19,669 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:39:33,192 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:40:59,952 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:41:06,710 - INFO - No device provided, using cpu
+2026-07-12 12:41:06,711 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:41:12,012 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:41:23,587 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:42:54,503 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:42:58,749 - INFO - No device provided, using cpu
+2026-07-12 12:42:58,751 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:43:05,106 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:43:18,323 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:46:29,134 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:46:33,418 - INFO - No device provided, using cpu
+2026-07-12 12:46:33,420 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 12:46:38,146 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 12:46:50,263 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:18:17,885 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:23:37,664 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:30:49,551 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:34:37,931 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:40:23,753 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 13:44:22,319 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:04:08,765 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:13:18,941 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:19:14,105 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:34:06,213 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\test_watch.txt
+2026-07-12 16:36:05,883 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\f636490861f6ece1258a6c506d0a2e58.png
+2026-07-12 16:36:05,883 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\f636490861f6ece1258a6c506d0a2e58.png
+2026-07-12 16:36:10,973 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:11,466 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:13,158 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:13,692 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:14,696 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\6346c0aa8d0daa47868d81786759e530.png
+2026-07-12 16:36:17,186 - INFO - No device provided, using cpu
+2026-07-12 16:36:17,189 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 16:36:17,404 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:18,280 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:19,283 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\2397fd761548d337703da7926dbf91cf.png
+2026-07-12 16:36:20,684 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:26,510 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:26,938 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:27,945 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\fb46c191681c9b93ebc1ac1d50cdf4c1.png
+2026-07-12 16:36:30,148 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:33,155 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\fb46c191681c9b93ebc1ac1d50cdf4c1.png
+2026-07-12 16:36:33,208 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:33,760 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:34,769 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\e89bb460fbb4d9194765e1f9e2caab57.png
+2026-07-12 16:36:36,810 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:37,347 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:38,352 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\e89bb460fbb4d9194765e1f9e2caab57.png
+2026-07-12 16:36:38,918 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:39,304 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:42,155 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:36:42,558 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:37:56,791 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\e89bb460fbb4d9194765e1f9e2caab57.png
+2026-07-12 16:37:56,791 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\e89bb460fbb4d9194765e1f9e2caab57.png
+2026-07-12 16:37:59,733 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:38:00,230 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:38:02,246 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:38:02,711 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 16:38:59,459 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 16:43:28,772 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 16:44:19,466 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 16:44:55,602 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 16:44:55,602 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 16:46:09,187 - INFO - 检测到新文件: G:\ai软件\git\zhipu manage\input\新建 DOCX 文档 (2).docx
+2026-07-12 17:21:39,403 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:27:36,361 - INFO - 检测到新文件: input/20260708160743.mp3
+2026-07-12 17:27:37,365 - INFO - 检测到新文件: input/新建 DOCX 文档 (2).docx
+2026-07-12 17:28:08,813 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:28:09,392 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:28:22,167 - INFO - No device provided, using cpu
+2026-07-12 17:28:22,176 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 17:28:26,094 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:28:50,088 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:33:50,712 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:34:25,980 - INFO - 检测到新文件: input/新建 DOCX 文档 (2).docx
+2026-07-12 17:34:49,694 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:34:51,265 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:34:53,310 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 17:35:13,058 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 18:18:22,153 - INFO - 检测到新文件: input/f636490861f6ece1258a6c506d0a2e58.png
+2026-07-12 18:18:22,156 - ERROR - 处理失败: input/f636490861f6ece1258a6c506d0a2e58.png - 'gbk' codec can't encode character '\u274c' in position 3: illegal multibyte sequence
+2026-07-12 18:22:42,536 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 18:22:45,007 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 18:22:53,620 - INFO - No device provided, using cpu
+2026-07-12 18:22:53,627 - INFO - Loading SentenceTransformer model from sentence-transformers/all-MiniLM-L6-v2.
+2026-07-12 18:22:59,694 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 18:23:25,551 - INFO - HTTP Request: POST https://open.bigmodel.cn/api/paas/v4/chat/completions "HTTP/1.1 200 OK"
+2026-07-12 18:27:13,816 - INFO - 检测到新文件: input/6346c0aa8d0daa47868d81786759e530.png
+2026-07-12 18:27:13,818 - ERROR - 处理失败: input/6346c0aa8d0daa47868d81786759e530.png - 'gbk' codec can't encode character '\u274c' in position 3: illegal multibyte sequence
+2026-07-12 18:27:42,620 - INFO - 检测到新文件: input/6346c0aa8d0daa47868d81786759e530.png
+2026-07-12 18:27:42,628 - ERROR - 处理失败: input/6346c0aa8d0daa47868d81786759e530.png - 'gbk' codec can't encode character '\u274c' in position 3: illegal multibyte sequence
+2026-07-12 18:28:46,531 - INFO - 检测到新文件: input/6346c0aa8d0daa47868d81786759e530.png
+2026-07-12 18:28:46,532 - ERROR - 处理失败: input/6346c0aa8d0daa47868d81786759e530.png - 'gbk' codec can't encode character '\u274c' in position 3: illegal multibyte sequence
+2026-07-12 18:30:53,919 - INFO - 检测到新文件: input/6346c0aa8d0daa47868d81786759e530.png
+2026-07-12 18:30:53,919 - ERROR - 处理失败: input/6346c0aa8d0daa47868d81786759e530.png - 'gbk' codec can't encode character '\u274c' in position 3: illegal multibyte sequence
+2026-07-12 18:32:02,975 - INFO - 检测到新文件: input/6346c0aa8d0daa47868d81786759e530.png
