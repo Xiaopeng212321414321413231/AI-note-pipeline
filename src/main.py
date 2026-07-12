@@ -10,6 +10,8 @@ import json
 from datetime import datetime
 import hashlib
 import argparse
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 from datetime import datetime
 from dotenv import load_dotenv
 
