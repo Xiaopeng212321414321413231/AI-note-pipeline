@@ -24,6 +24,7 @@ from ai_rewrite import rewrite_text_with_ai, classify_topic, repair_ocr_text
 from vector_store import ObsidianVectorStore
 from classifier import classify_content
 from search import search_web, fetch_webpage
+from healthcheck import run_all as healthcheck
 
 #  配置（注意变量名：ZHIPUAI_API_KEY 不是 ZHIPU_API_KEY）
 ZHIPUAI_API_KEY = os.getenv("ZHIPUAI_API_KEY")
@@ -66,7 +67,7 @@ def get_vector_store():
     return _vector_store
 
 #  提取文字 
-def extract_text_from_file(file_path: str) -> str:
+def extract_text_from_file(file_path: str, clean_only: bool = False) -> str:
     ext = os.path.splitext(file_path)[1].lower()
     if ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'):
         print(f"   ️ 图片 OCR...")
@@ -91,10 +92,12 @@ def extract_text_from_file(file_path: str) -> str:
         return transcribe_audio(file_path)
     elif ext == '.docx':
         from docx import Document
-        import zipfile, os as _os
+        import zipfile, os as _os, re as _re
         doc = Document(file_path)
         docx_text = '\n'.join(p.text for p in doc.paragraphs if p.text.strip())
-        # 提取 docx 内嵌图片并 OCR
+        if clean_only:
+            return docx_text
+        # 提取 docx 内嵌图片并 OCR（过滤垃圾识别）
         img_texts = []
         tmp_dir = _os.path.join(_os.path.dirname(file_path), '_docx_imgs')
         _os.makedirs(tmp_dir, exist_ok=True)
@@ -103,21 +106,24 @@ def extract_text_from_file(file_path: str) -> str:
                 if name.startswith('word/media/') and name.lower().endswith(('.png','.jpg','.jpeg')):
                     img_path = _os.path.join(tmp_dir, _os.path.basename(name))
                     with open(img_path, 'wb') as f: f.write(z.read(name))
-                    ocr_result = extract_text_from_image(img_path)
-                    if ocr_result.strip():
-                        img_texts.append(ocr_result)
+                    if _os.path.getsize(img_path) > 5000:
+                        ocr_result = extract_text_from_image(img_path)
+                        if ocr_result and len(ocr_result.strip()) > 20:
+                            good = sum(1 for c in ocr_result if c.isprintable() or '一' <= c <= '鿿')
+                            if good / max(len(ocr_result), 1) > 0.4:
+                                img_texts.append(ocr_result)
         for f in _os.listdir(tmp_dir):
             try: _os.remove(_os.path.join(tmp_dir, f))
             except: pass
         try: _os.rmdir(tmp_dir)
         except: pass
-        combined = docx_text
-        if img_texts:
-            combined += '\n\n=== 图片内容 ===\n\n' + '\n\n'.join(img_texts)
         try:
-            return repair_ocr_text(ZHIPUAI_API_KEY, combined)
+            fixed_text = repair_ocr_text(ZHIPUAI_API_KEY, docx_text) if docx_text.strip() else docx_text
         except:
-            return combined
+            fixed_text = docx_text
+        if img_texts:
+            fixed_text += '\n\n=== 图片内容（OCR）===\n\n' + '\n\n'.join(img_texts)
+        return fixed_text
     elif ext in ('.md', '.txt'):
         print(f"   [文本] 读取文本...")
         with open(file_path, 'r', encoding='utf-8') as f:
@@ -192,7 +198,9 @@ def process_file(file_path: str):
     file_name = os.path.basename(file_path)
     print(f"\n[{file_name}]")
     try:
-        raw_text = extract_text_from_file(file_path)
+        raw_text = extract_text_from_file(file_path, clean_only=True) if file_path.lower().endswith('.docx') else extract_text_from_file(file_path)
+        if raw_text is None:
+            raw_text = ""
         if not raw_text or len(raw_text.strip()) < 5:
             print(f"   [警告]️ 未提取到有效文字")
             # 音频短内容也保留，不丢弃
@@ -202,6 +210,20 @@ def process_file(file_path: str):
                 _archive_file(file_path, "skip")
             else:
                 _archive_file(file_path, "skip")
+            return
+
+        # docx：段落文本短（<100字），内容在截图里，提取全文（含RapidOCR+AI修复）后保存
+        if file_path.lower().endswith('.docx') and len(raw_text.strip()) < 100:
+            print(f"   [定位] 段落文本仅{len(raw_text.strip())}字，内容在截图里，提取全文并AI修复")
+            full_text = extract_text_from_file(file_path)
+            # extract_text_from_file 内部已调 repair_ocr_text，无需重复
+            if not full_text or len(full_text.strip()) < 10:
+                print(f"   [警告] 提取结果为空，跳过")
+                _archive_file(file_path, "skip")
+                return
+            print(f"   [完成] 提取{len(full_text)}字，保存到笔记")
+            save_result(full_text, os.path.splitext(file_name)[0] + ".md")
+            _archive_file(file_path, "done")
             return
 
         result = process_content(raw_text, file_name)
@@ -248,9 +270,36 @@ def process_url(url: str):
         print(f"   [失败] 网页处理失败: {e}")
 
 #  批量处理 
+#  批量处理
 def process_batch():
+    # 1. 启动健康检查
+    report, has_error = healthcheck()
+    print(report)
+    if has_error:
+        print('  ❌ 环境检查未通过，请修复后重试')
+        return
+
+    # 2. 自动重试 error 文件夹里的文件（移回 input）
+    error_dir = os.path.join(INPUT_DIR, 'error')
+    if os.path.isdir(error_dir):
+        error_files = [f for f in os.listdir(error_dir) if os.path.isfile(os.path.join(error_dir, f)) and not f.startswith('.')]
+        if error_files:
+            print()
+            print('  ' + '='*46)
+            print(f'  🔄 发现 {len(error_files)} 个待重试文件，正在移回...')
+            print('  ' + '='*46)
+            for f in error_files:
+                src = os.path.join(error_dir, f)
+                dst = os.path.join(INPUT_DIR, f)
+                try:
+                    os.rename(src, dst)
+                    print(f'    ↩️ {f}')
+                except Exception as e:
+                    print(f'    ⚠️ {f} 移动失败: {e}')
+
+    # 3. 扫描 input 目录
     if not os.path.isdir(INPUT_DIR):
-        print(f"input 目录不存在")
+        print('input 目录不存在')
         return
     files = sorted([
         os.path.join(INPUT_DIR, f) for f in os.listdir(INPUT_DIR)
@@ -260,16 +309,18 @@ def process_batch():
     skip_dirs = {os.path.join(INPUT_DIR, d) for d in ('done', 'skip', 'error')}
     files = [f for f in files if not any(f.startswith(d) for d in skip_dirs)]
     if not files:
-        print("[失败] input 文件夹为空（无待处理文件）")
+        print('[失败] input 文件夹为空（无待处理文件）')
         return
-    print(f"\n{'='*50}")
-    print(f"  共发现 {len(files)} 个文件")
-    print(f"{'='*50}\n")
+    print()
+    print('  ' + '='*46)
+    print(f'  共发现 {len(files)} 个文件')
+    print('  ' + '='*46)
     for f in files:
         process_file(f)
-    print(f"\n{'='*50}")
-    print(f"  完成！")
-    print(f"{'='*50}")
+    print()
+    print('  ' + '='*46)
+    print('  完成！')
+    print('  ' + '='*46)
 
 #  主入口 
 def main():
