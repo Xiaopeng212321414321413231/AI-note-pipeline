@@ -15,22 +15,45 @@
 | 网页抓取 | 输入 URL 自动提取正文 |
 | 文本/Markdown | 直接读取 .txt/.md |
 | 话题分类 | 智谱 AI 自动分类 |
-| 向量检索 | ChromaDB + all-MiniLM-L6-v2 本地语义检索 |
-| 联网补充 | Tavily API 搜索补充背景 |
+| 向量检索 | ChromaDB + all-MiniLM-L6-v2 本地语义检索（844 篇） |
+| 联网补充 | **Bing 优先**（免费无限次），Tavily 备用 |
+| 中英翻译 | 百度大模型翻译 API，中英混杂自动翻译补充 |
+| 智能联网 | 参考笔记 ≥ 2 篇时自动跳过联网，节省 API 额度 |
 | AI 风格重写 | 模仿 Obsidian 笔记风格，保留全部原始信息 |
 | GUI 控制面板 | Tkinter 界面 — 启动/停止监听、实时日志 |
 | 文件监听 | watchdog 自动处理拖入 input/ 的文件 |
 | 每日报表 | 每晚 21:00 自动生成流水线日报 |
 
+## 搜索与翻译
+
+**联网搜索（Bing → Tavily）**
+- **Bing 搜索**：HTTP 直接请求，国内可用，无次数限制，不需要 API Key
+- **Tavily 搜索**：当 Bing 无结果时自动切换为备用
+- **智能触发**：仅在参考笔记 ≤ 1 篇时联网，节省额度
+
+**百度翻译（大模型翻译 API）**
+- 检测到中英混杂文本时自动翻译中文并追加在笔记后
+- 使用 Bearer Token 鉴权（无需 MD5 签名）
+- 纯中文文本自动跳过，不浪费额度
+
 ## 快速开始
 
 ### 安装
-```
+```bash
 pip install -r requirements.txt
 ```
 
 ### 配置
-复制 `.env.example` 为 `.env`，填写 API Key。
+复制 `.env.example` 为 `.env`，填写 API Key：
+
+```env
+ZHIPUAI_API_KEY=xxx           # 智谱 API key（必填）
+BAIDU_APP_ID=xxx              # 百度 OCR（可选）
+BAIDU_SECRET_KEY=xxx          # 百度 OCR 密钥（可选）
+FANYI_APP_ID=xxx              # 百度翻译 APPID（可选）
+FANYI_SECRET_KEY=xxx          # 百度翻译密钥（可选）
+TAVILY_API_KEY=xxx            # Tavily 搜索（可选，Bing 不需要 key）
+```
 
 ### 使用
 ```bash
@@ -53,7 +76,7 @@ src/
   transcriber.py   # 音频转写（Whisper + 切片）
   vector_store.py  # ChromaDB 向量检索
   classifier.py    # 话题分类
-  search.py        # 联网搜索
+  search.py        # 联网搜索（Bing+Tavily）+ 百度翻译
   note_loader.py   # 加载参考笔记
   ai_rewrite.py    # AI 风格重写
   watcher.py       # 文件监听
@@ -61,4 +84,8 @@ src/
   daily_report.py  # 每日日报
 ```
 
-> GitHub: https://github.com/Xiaopeng212321414321413231/AI-note-pipeline
+## 关联资源
+
+- GitHub: https://github.com/Xiaopeng212321414321413231/AI-note-pipeline
+- 驱动模型：智谱 GLM-4V-Flash（免费）
+- 向量数据库：ChromaDB（本地，all-MiniLM-L6-v2）
