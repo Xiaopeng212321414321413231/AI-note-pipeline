@@ -169,10 +169,15 @@ def process_content(raw_text: str, source_name: str) -> str:
         f"{topic_name} {raw_text[:200]}", n_results=3
     )
     style_notes = similar_docs if similar_docs else []
-    # DuckDuckGo 搜索（免费无限次，无需 API Key）
+    # 联网搜索（Bing 优先，Tavily 备胎）
     web_context = ""
-    print(f"   [网络] 联网搜索补充背景...")
-    web_context = search_web(f"{topic_name} {raw_text[:150]}")
+    TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
+    if len(style_notes) <= 1:
+        print(f"   [网络] 联网搜索补充背景...")
+        web_context = search_web(f"{topic_name} {raw_text[:150]}")
+        if not web_context and TAVILY_API_KEY:
+            print(f"   Tavily 备胎...")
+            web_context = search_web(f"{topic_name} {raw_text[:150]}", TAVILY_API_KEY)
     if web_context:
         print(f"   [完成] 联网获取 {len(web_context)} 字符")
     else:
@@ -193,8 +198,9 @@ def process_content(raw_text: str, source_name: str) -> str:
     print(f"   [完成] 重写完成 ({len(rewritten)} 字符)")
     return rewritten
 def save_result(content: str, filename: str):
-    print("   \u26a0\ufe0f \u5185\u5bb9\u4e3a\u7a7a\uff0c\u4e0d\u4fdd\u5b58")
-    return
+    if content is None or not content.strip():
+        print("   ⚠️ 内容为空，不保存")
+        return
     out_path = os.path.join(OUTPUT_DIR, filename)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
