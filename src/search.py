@@ -78,7 +78,7 @@ def detect_mixed_language(text):
 
 
 def translate_text(text, from_lang="auto", to_lang="zh"):
-    """百度通用翻译 API"""
+    """百度大模型文本翻译 API（Bearer Token 鉴权）"""
     appid = os.getenv("FANYI_APP_ID", os.getenv("BAIDU_APP_ID", ""))
     secret_key = os.getenv("FANYI_SECRET_KEY", os.getenv("BAIDU_SECRET_KEY", ""))
     if not appid or not secret_key:
@@ -87,29 +87,32 @@ def translate_text(text, from_lang="auto", to_lang="zh"):
     if not text or len(text.strip()) < 10:
         return ""
     query = text[:2000].strip()
-    salt = str(random.randint(32768, 65536))
-    sign = hashlib.md5((appid + query + salt + secret_key).encode("utf-8")).hexdigest()
-    params = {"q": query, "from": from_lang, "to": to_lang,
-              "appid": appid, "salt": salt, "sign": sign}
-    data = urllib.parse.urlencode(params).encode("utf-8")
+    # 中英混杂强行指定源语言为 en，避免 auto 误判为 zh
+    en_ratio = sum(1 for c in query if "a" <= c.lower() <= "z" or c in ".,;:!?()-[]{}") / max(len(query), 1)
+    src_lang = "en" if en_ratio > 0.15 else from_lang
+    data = json.dumps({
+        "appid": appid,
+        "from": src_lang,
+        "to": to_lang,
+        "q": query
+    }).encode("utf-8")
     try:
         req = urllib.request.Request(
-            url="https://fanyi-api.baidu.com/api/trans/vip/translate",
+            url="https://fanyi-api.baidu.com/ait/api/aiTextTranslate",
             data=data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {secret_key}"
+            }
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read().decode("utf-8"))
         if "error_code" in result:
-            code = result["error_code"]
-            if code == "52003":
-                print("   百度翻译：APP ID 未授权，请到 https://fanyi-api.baidu.com/ 注册")
-            else:
-                print(f"   翻译失败（错误码: {code}）")
+            print(f"   翻译失败（错误码: {result['error_code']}）")
             return ""
         trans_list = result.get("trans_result", [])
         if trans_list:
-            return "\n".join(item["dst"] for item in trans_list)
+            return chr(10).join(item["dst"] for item in trans_list)
         return ""
     except Exception as e:
         print(f"   翻译请求失败: {e}")
