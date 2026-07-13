@@ -44,9 +44,46 @@ def _tesseract_ocr(path, lang):
     except Exception:
         return ""
 
-def extract_text_from_image(path):
+
+
+def extract_text_from_image_vision(path, api_key):
+    """使用 GLM-4V-Flash 视觉模型识别图片，返回文字"""
+    import base64
+    with open(path, 'rb') as f:
+        b64 = base64.b64encode(f.read()).decode('utf-8')
+    ext = path.rsplit('.', 1)[-1].lower()
+    if ext == 'jpg':
+        ext = 'jpeg'
+    data_url = f'data:image/{ext};base64,{b64}'
+    
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key, base_url='https://open.bigmodel.cn/api/paas/v4/')
+    try:
+        resp = client.chat.completions.create(
+            model='glm-4v-flash',
+            messages=[{
+                'role': 'user',
+                'content': [
+                    {'type': 'image_url', 'image_url': {'url': data_url}},
+                    {'type': 'text', 'text': '请提取这张图片中的所有文字内容，包括代码和文本。如果是代码截图，保持缩进、空格、符号完全不变。如果是中文段落，完整提取。不要添加解释说明。'}
+                ]
+            }],
+            temperature=0.1,
+            timeout=30
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        return None
+
+def extract_text_from_image(path, api_key=None):
     """从图片提取文字：RapidOCR 为主，Tesseract 为后备"""
-    # 1. 尝试 RapidOCR（高质量，支持中英混合）
+    # 1. 优先使用 GLM-4V-Flash 视觉识别（api_key 不为空时）
+    if api_key:
+        vision_result = extract_text_from_image_vision(path, api_key)
+        if vision_result and len(vision_result.strip()) > 5:
+            return vision_result
+    
+    # 2. 后备：RapidOCR（高质量，支持中英混合）
     rapid_result = _rapid_ocr(path)
     if rapid_result is not None and len(rapid_result.strip()) > 5:
         return repair_ocr_text(rapid_result)

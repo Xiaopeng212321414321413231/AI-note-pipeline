@@ -70,12 +70,10 @@ def get_vector_store():
 def extract_text_from_file(file_path: str, clean_only: bool = False) -> str:
     ext = os.path.splitext(file_path)[1].lower()
     if ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'):
-        print(f"   ️ 图片 OCR...")
-        ocr_text = extract_text_from_image(file_path)
-        try:
-            return repair_ocr_text(ZHIPUAI_API_KEY, ocr_text)
-        except Exception:
-            return ocr_text
+        print(f"   🖼️ 图片识别（GLM-4V-Flash）...")
+        ocr_text = extract_text_from_image(file_path, ZHIPUAI_API_KEY)
+        # GLM-4V 已返回干净文字，无需再 AI repair
+        return ocr_text or ""
     elif ext == '.pdf':
         print(f"   [文档] PDF 提取...")
         try:
@@ -93,25 +91,37 @@ def extract_text_from_file(file_path: str, clean_only: bool = False) -> str:
     elif ext == '.docx':
         from docx import Document
         import zipfile, os as _os, re as _re
+        from concurrent.futures import ThreadPoolExecutor, as_completed
         doc = Document(file_path)
-        docx_text = '\n'.join(p.text for p in doc.paragraphs if p.text.strip())
+        docx_text = chr(10).join(p.text for p in doc.paragraphs if p.text.strip())
         if clean_only:
             return docx_text
-        # 提取 docx 内嵌图片并 OCR（过滤垃圾识别）
-        img_texts = []
+        # 提取 docx 内嵌图片（GLM-4V-Flash 并发识别）
         tmp_dir = _os.path.join(_os.path.dirname(file_path), '_docx_imgs')
         _os.makedirs(tmp_dir, exist_ok=True)
+        img_paths = []
         with zipfile.ZipFile(file_path, 'r') as z:
             for name in z.namelist():
                 if name.startswith('word/media/') and name.lower().endswith(('.png','.jpg','.jpeg')):
                     img_path = _os.path.join(tmp_dir, _os.path.basename(name))
                     with open(img_path, 'wb') as f: f.write(z.read(name))
-                    if _os.path.getsize(img_path) > 5000:
-                        ocr_result = extract_text_from_image(img_path)
-                        if ocr_result and len(ocr_result.strip()) > 20:
-                            good = sum(1 for c in ocr_result if c.isprintable() or '一' <= c <= '鿿')
-                            if good / max(len(ocr_result), 1) > 0.4:
-                                img_texts.append(ocr_result)
+                    if _os.path.getsize(img_path) > 1000:
+                        img_paths.append(img_path)
+        # 并发调用 GLM-4V-Flash（5路并发）
+        img_texts = []
+        if img_paths:
+            count = len(img_paths)
+            print(f"    🖼️ 并发识别 {count} 张图片（GLM-4V-Flash，5路并发）...")
+            with ThreadPoolExecutor(max_workers=5) as pool:
+                fut_map = {pool.submit(extract_text_from_image, p, ZHIPUAI_API_KEY): p for p in img_paths}
+                for fut in as_completed(fut_map):
+                    try:
+                        result = fut.result()
+                        if result and len(result.strip()) > 10:
+                            img_texts.append(result)
+                    except Exception:
+                        pass
+        # 清理临时目录
         for f in _os.listdir(tmp_dir):
             try: _os.remove(_os.path.join(tmp_dir, f))
             except: pass
@@ -122,7 +132,7 @@ def extract_text_from_file(file_path: str, clean_only: bool = False) -> str:
         except:
             fixed_text = docx_text
         if img_texts:
-            fixed_text += '\n\n=== 图片内容（OCR）===\n\n' + '\n\n'.join(img_texts)
+            fixed_text += chr(10)*2 + '=== 图片内容（视觉识别）===' + chr(10)*2 + (chr(10)*2).join(img_texts)
         return fixed_text
     elif ext in ('.md', '.txt'):
         print(f"   [文本] 读取文本...")
