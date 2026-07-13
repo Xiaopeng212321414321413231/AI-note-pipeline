@@ -79,10 +79,10 @@ def detect_mixed_language(text):
 
 def translate_text(text, from_lang="auto", to_lang="zh"):
     """百度通用翻译 API"""
-    appid = os.getenv("BAIDU_APP_ID", "")
-    secret_key = os.getenv("BAIDU_SECRET_KEY", "")
+    appid = os.getenv("FANYI_APP_ID", os.getenv("BAIDU_APP_ID", ""))
+    secret_key = os.getenv("FANYI_SECRET_KEY", os.getenv("BAIDU_SECRET_KEY", ""))
     if not appid or not secret_key:
-        print("   百度翻译未配置（.env 中 BAIDU_APP_ID / BAIDU_SECRET_KEY）")
+        print("   百度翻译未配置（.env 加 FANYI_APP_ID / FANYI_SECRET_KEY）")
         return ""
     if not text or len(text.strip()) < 10:
         return ""
