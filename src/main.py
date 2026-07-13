@@ -23,7 +23,7 @@ from transcriber import transcribe_audio
 from ai_rewrite import rewrite_text_with_ai, classify_topic, repair_ocr_text
 from vector_store import ObsidianVectorStore
 from classifier import classify_content
-from search import search_web, fetch_webpage
+from search import search_web, fetch_webpage, translate_append, translate_append
 from healthcheck import run_all as healthcheck
 
 #  配置（注意变量名：ZHIPUAI_API_KEY 不是 ZHIPU_API_KEY）
@@ -33,7 +33,6 @@ TESSERACT_PATH = os.getenv("TESSERACT_PATH", "C:/Program Files/Tesseract-OCR/tes
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "data/chroma_db")
 INPUT_DIR = os.getenv("INPUT_DIR", "input")
 OUTPUT_DIR = os.path.join(OBSIDIAN_VAULT_PATH, "AI生成笔记")
-TAVILY_API_KEY = os.getenv("TAVILY_API_KEY", "")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 os.makedirs(INPUT_DIR, exist_ok=True)
@@ -170,31 +169,32 @@ def process_content(raw_text: str, source_name: str) -> str:
         f"{topic_name} {raw_text[:200]}", n_results=3
     )
     style_notes = similar_docs if similar_docs else []
-    print(f"    参考笔记: {len(style_notes)} 篇")
-
+    # DuckDuckGo 搜索（免费无限次，无需 API Key）
     web_context = ""
-    if len(style_notes) <= 1 and TAVILY_API_KEY:
-        print(f"   [网络] 联网搜索补充背景...")
-        web_context = search_web(f"{topic_name} {raw_text[:150]}", TAVILY_API_KEY)
-        if web_context:
-            print(f"   [完成] 联网获取 {len(web_context)} 字符")
-        else:
-            print(f"   ️ 联网无结果")
+    print(f"   [网络] 联网搜索补充背景...")
+    web_context = search_web(f"{topic_name} {raw_text[:150]}")
+    if web_context:
+        print(f"   [完成] 联网获取 {len(web_context)} 字符")
+    else:
+        print(f"   ️ 联网无结果")
+
+    # 百度翻译：检测中英混杂，自动补充中文翻译
+    trans_context = translate_append(raw_text)
+    if trans_context:
+        print(f"   🌐 检测到中英混杂，已自动翻译补充")
 
     print(f"   ️ AI 风格重写...")
     rewritten = rewrite_text_with_ai(
-        ZHIPUAI_API_KEY, raw_text, style_notes, topic
+        ZHIPUAI_API_KEY, raw_text, style_notes, topic,
+        web_context=web_context + trans_context
     )
     if not rewritten:
         raise RuntimeError("AI 重写返回空结果")
     print(f"   [完成] 重写完成 ({len(rewritten)} 字符)")
     return rewritten
-
-#  保存 
 def save_result(content: str, filename: str):
-    if content is None or not content.strip():
-        print("   \u26a0\ufe0f \u5185\u5bb9\u4e3a\u7a7a\uff0c\u4e0d\u4fdd\u5b58")
-        return
+    print("   \u26a0\ufe0f \u5185\u5bb9\u4e3a\u7a7a\uff0c\u4e0d\u4fdd\u5b58")
+    return
     out_path = os.path.join(OUTPUT_DIR, filename)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
