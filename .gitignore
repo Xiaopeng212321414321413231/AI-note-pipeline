@@ -26,3 +26,12 @@ output_ocr_notes.md
 # IDE
 .vscode/
 .idea/
+
+# 临时调试文件
+save_guide.py
+fix_*.py
+fix_all.py
+
+# 运行目录
+data/
+input/
