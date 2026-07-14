@@ -3,8 +3,6 @@ __pycache__/
 *.pyc
 *.pyo
 .env
-logs/
-.output/
 
 # 临时文件
 _run_*.py
@@ -16,22 +14,36 @@ _test*.png
 _escape_test.py
 _fix2.py
 _fix3.py
+_new_funcs.py
+str
 
 # 文档临时目录
 _docx_tmp/
 docx_block.py
 docx_block_data.txt
 output_ocr_notes.md
+tmp_images/
+tmp_imgs/
+_docx_tmp/
+-p/
 
 # IDE
 .vscode/
 .idea/
 
-# 临时调试文件
-save_guide.py
-fix_*.py
-fix_all.py
+# 运行日志
+logs/
 
 # 运行目录
 data/
+.output/
 input/
+
+# 生成文件
+output/*.md
+output_ocr_notes.md
+enhance_save.py
+fix218.py
+
+# 系统
+Thumbs.db
