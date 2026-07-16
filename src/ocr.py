@@ -72,7 +72,7 @@ def extract_text_from_image_vision(path, api_key):
             timeout=30
         )
         return resp.choices[0].message.content.strip()
-    except Exception as e:
+    except Exception:
         return None
 
 def extract_text_from_image(path, api_key=None):

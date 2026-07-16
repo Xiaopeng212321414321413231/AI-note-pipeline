@@ -19,6 +19,7 @@ from src.checkpoint import (
     summary, clear_all, STAGES, STAGE_NAMES,
 )
 from src.main import run_pipeline, process_input_dir, resume_interrupted
+from src import rss_importer
 
 class PipelineGUI:
     def __init__(self, root):
@@ -51,7 +52,10 @@ class PipelineGUI:
         main_frame = Frame(self.root, bg="#f0f0f0", padx=15, pady=10)
         main_frame.pack(fill=X)
 
-        # --- 大按钮 ---
+        # --- 📁 本地文件处理 ---
+        Label(main_frame, text="📁 本地文件处理", bg="#f0f0f0",
+              font=("Microsoft YaHei", 11, "bold"),
+              fg="#2b3e4f", anchor="w").pack(fill=X, pady=(0, 3))
         btn_frame = Frame(main_frame, bg="#f0f0f0")
         btn_frame.pack(fill=X, pady=(0, 10))
 
@@ -112,6 +116,50 @@ class PipelineGUI:
             activeforeground="white",
         )
         self.retry_btn.pack(side=LEFT, padx=(10, 0))
+
+        # ========== 🌐 联网处理 ==========
+        ttk.Separator(main_frame, orient=HORIZONTAL).pack(fill=X, pady=(5, 8))
+        Label(main_frame, text="🌐 联网处理", bg="#f0f0f0",
+              font=("Microsoft YaHei", 11, "bold"),
+              fg="#2b3e4f", anchor="w").pack(fill=X, pady=(0, 3))
+        web_frame = Frame(main_frame, bg="#f0f0f0")
+        web_frame.pack(fill=X, pady=(5, 10))
+
+        Label(web_frame, text="知乎专栏ID:", bg="#f0f0f0",
+              font=("Microsoft YaHei", 9)).pack(side=LEFT, padx=(0, 5))
+        self.zhihu_entry = Entry(web_frame, width=20,
+                                 font=("Microsoft YaHei", 9))
+        self.zhihu_entry.pack(side=LEFT, padx=(0, 10))
+        self.zhihu_entry.insert(0, "kazike")
+
+        self.scan_btn = Button(
+            web_frame,
+            text="📡  扫描今天新文章",
+            command=self._scan_today,
+            bg="#8e44ad", fg="white",
+            font=("Microsoft YaHei", 10, "bold"),
+            padx=12, pady=8,
+            cursor="hand2",
+            relief=FLAT,
+            activebackground="#9b59b6",
+            activeforeground="white",
+        )
+        self.scan_btn.pack(side=LEFT, padx=(0, 5))
+
+        self.download_btn = Button(
+            web_frame,
+            text="⬇  下载全部队列",
+            command=self._download_all,
+            bg="#1abc9c", fg="white",
+            font=("Microsoft YaHei", 10, "bold"),
+            padx=12, pady=8,
+            cursor="hand2",
+            relief=FLAT,
+            activebackground="#16a085",
+            activeforeground="white",
+        )
+        self.download_btn.pack(side=LEFT)
+
 
         # ========== 恢复提示区 ==========
         # ========== 恢复提示区 ==========
@@ -224,7 +272,7 @@ class PipelineGUI:
             # 检查是否有中断文件
             interrupted = get_interrupted()
             if interrupted:
-                errors = get_errors()
+                get_errors()
                 text_lines = [f"⚠️ 发现 {len(interrupted)} 个中断的文件："]
                 for fp, info in list(interrupted.items())[:5]:
                     stage = STAGE_NAMES.get(info.get("stage_num", 0), "?")
@@ -366,9 +414,66 @@ class PipelineGUI:
         except Exception:
             pass
 
+    def _scan_today(self):
+        if self.running or getattr(self, '_scanning', False):
+            messagebox.showinfo("提示", "正在扫描中，请稍后")
+            return
+        self._log("📡 开始扫描今天新文章...")
+        def run():
+            self._scanning = True
+            try:
+                n = rss_importer.run()
+                self._log(f"  ✅ RSS: 新增 {n} 篇")
+                col_id = self.zhihu_entry.get().strip()
+                if col_id:
+                    try:
+                        self._log(f"  获取知乎专栏: {col_id}...")
+                        n2 = rss_importer.fetch_zhihu(col_id)
+                        self._log(f"  ✅ 知乎: 新增 {n2} 篇")
+                    except Exception as e:
+                        self._log(f"  ❌ 知乎获取失败: {e}")
+                self._log("📡 扫描完成")
+            except Exception as e:
+                self._log(f"❌ 扫描异常: {e}")
+            finally:
+                self._scanning = False
+        threading.Thread(target=run, daemon=True).start()
+
+    def _download_all(self):
+        if self.running:
+            messagebox.showinfo("提示", "流水线正在运行中")
+            return
+        import json
+        qpath = Path(__file__).resolve().parent.parent / "data" / "rss_queue.json"
+        if qpath.exists():
+            q = json.loads(qpath.read_text(encoding="utf-8"))
+            pending = sum(1 for v in q.values() if v.get("status") == "待处理")
+        else:
+            pending = 0
+        if pending == 0:
+            messagebox.showinfo("提示", '队列中没有待处理的文章了，先用"扫描今天新文章"添加文章')
+            return
+        self._log(f"📥 开始下载全部队列 {pending} 篇...")
+        def run():
+            self.running = True
+            self.download_btn.config(text="⬇  下载中...", bg="#95a5a6", state=DISABLED)
+            self.scan_btn.config(state=DISABLED)
+            try:
+                done = rss_importer.proc()  # 无limit = 处理全部
+                self._log(f"✅ 全部下载完成: {done} 篇")
+            except Exception as e:
+                self._log(f"❌ 下载异常: {e}")
+            finally:
+                self.running = False
+                self.root.after(0, lambda: self.download_btn.config(
+                    text="⬇  下载全部队列", bg="#1abc9c", state=NORMAL))
+                self.root.after(0, lambda: self.scan_btn.config(state=NORMAL))
+        threading.Thread(target=run, daemon=True).start()
+
 def main():
+
     root = Tk()
-    app = PipelineGUI(root)
+    PipelineGUI(root)
     root.mainloop()
 
 if __name__ == "__main__":

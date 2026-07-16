@@ -37,7 +37,7 @@ def check_api_key():
     try:
         from openai import OpenAI
         client = OpenAI(api_key=key, base_url='https://open.bigmodel.cn/api/paas/v4/', timeout=10)
-        resp = client.chat.completions.create(
+        _ = client.chat.completions.create(
             model='glm-4-flash', messages=[{'role':'user','content':'hi'}], max_tokens=1
         )
         return ('ok', f'API Key 有效（{key[:8]}...）')
@@ -70,6 +70,32 @@ def check_input_dirs():
     if error_count > 0:
         return ('warn', f'待重试文件: {error_count} 个')
     return ('ok', '无积压文件')
+
+
+
+def validate_startup():
+    """启动前校验关键配置是否存在"""
+    from loguru import logger
+    import os
+
+    checks = [
+        ('ZHIPUAI_API_KEY', False, '缺少 ZHIPUAI_API_KEY, 流水线无法运行'),
+        ('TESSERACT_PATH', True, 'Tesseract 路径不存在, PDF/图片 OCR 将 fallback'),
+        ('OUTPUT_DIR', True, '输出目录不存在, 笔记无法保存'),
+        ('INPUT_DIR', True, '输入目录不存在'),
+    ]
+    all_ok = True
+    for key, check_path, msg in checks:
+        val = os.getenv(key, '')
+        if not val:
+            logger.warning(f'⚠️ 配置缺失: {msg}')
+            all_ok = False
+        elif check_path and not os.path.exists(val):
+            logger.warning(f'⚠️ 路径不存在: {msg}')
+            all_ok = False
+    if all_ok:
+        logger.info('✅ 配置检查通过')
+    return all_ok
 
 def run_all():
     checks = [

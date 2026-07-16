@@ -6,6 +6,8 @@ os.environ["HF_HUB_OFFLINE"] = "1"
 
 import hashlib
 import glob
+import time
+from loguru import logger
 import chromadb
 from chromadb.utils import embedding_functions
 
@@ -58,7 +60,19 @@ class ObsidianVectorStore:
             self.is_indexed = True
             return
         md_files = glob.glob(os.path.join(self.vault_path, "**", "*.md"), recursive=True)
-        print(f"扫描到 {len(md_files)} 个 Markdown 文件")
+
+        # 增量索引: 只处理 mtime > 上次索引时间的文件
+        cutoff = self.last_index_time
+        if cutoff > 0:
+            new_md = [f for f in md_files if os.path.getmtime(f) > cutoff]
+            if not new_md:
+                print("  无新增/修改文件, 跳过索引")
+                return
+            print(f"  增量扫描: 发现 {len(new_md)} 个新/修改文件 (共 {len(md_files)} 个)")
+            md_files = new_md
+        else:
+            print(f"扫描到 {len(md_files)} 个 Markdown 文件 (全量)")
+
         documents, ids, metadatas = [], [], []
         for file_path in md_files:
             try:
