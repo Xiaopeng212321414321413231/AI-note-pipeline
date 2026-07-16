@@ -5,7 +5,7 @@ import os
 ZHIPUAI_API_KEY = os.getenv("ZHIPUAI_API_KEY", "")
 
 # Obsidian 路径
-OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH", "G:/ai软件/obsidian/ai新闻")
+OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH", "")
 OUTPUT_DIR = os.path.join(OBSIDIAN_VAULT_PATH, "AI生成笔记")
 
 # OCR

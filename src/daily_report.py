@@ -9,7 +9,8 @@ datestr = today.strftime("%Y-%m-%d")
 weekday_cn = ["星期一","星期二","星期三","星期四","星期五","星期六","星期日"][today.weekday()]
 
 log_path = os.path.join(os.path.dirname(__file__), "..", "logs", "daily", f"{datestr}.jsonl")
-out_dir = os.path.join("G:/ai软件/obsidian/ai新闻", "流水线日报")
+from config import OBSIDIAN_VAULT_PATH
+out_dir = os.path.join(OBSIDIAN_VAULT_PATH, "流水线日报")
 os.makedirs(out_dir, exist_ok=True)
 out_path = os.path.join(out_dir, f"流水线日报_{datestr}.md")
 
