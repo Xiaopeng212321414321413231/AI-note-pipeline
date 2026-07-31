@@ -5,7 +5,21 @@ import os, tempfile, shutil, subprocess as sp
 SUPPORTED_AUDIO = (".mp3",".wav",".m4a",".flac",".aac",".ogg",".amr")
 SUPPORTED_IMAGE = (".png",".jpg",".jpeg",".bmp",".tiff",".webp")
 
-TESSERACT = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+def _find_tesseract():
+    """优先环境变量 TESSERACT_PATH，其次系统 PATH，最后常见安装路径"""
+    env = os.getenv("TESSERACT_PATH", "").strip()
+    if env and os.path.exists(env):
+        return env
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    for p in (r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+              r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+              "/usr/bin/tesseract", "/usr/local/bin/tesseract"):
+        if os.path.exists(p):
+            return p
+    return None
+TESSERACT = _find_tesseract()
 
 # ---------- RapidOCR 引擎（主OCR，质量远优于Tesseract） ----------
 _RAPID_ENGINE = None

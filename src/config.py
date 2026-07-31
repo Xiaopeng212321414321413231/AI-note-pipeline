@@ -9,7 +9,7 @@ OBSIDIAN_VAULT_PATH = os.getenv("OBSIDIAN_VAULT_PATH", "")
 OUTPUT_DIR = os.path.join(OBSIDIAN_VAULT_PATH, "AI生成笔记")
 
 # OCR
-TESSERACT_PATH = os.getenv("TESSERACT_PATH", "C:/Program Files/Tesseract-OCR/tesseract.exe")
+TESSERACT_PATH = os.getenv("TESSERACT_PATH", "")  # 留空则自动检测 (PATH/常见安装路径)
 
 # 数据库
 CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "data/chroma_db")

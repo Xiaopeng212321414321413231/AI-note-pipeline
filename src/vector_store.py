@@ -1,8 +1,7 @@
 import os
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-os.environ["HF_HUB_DISABLE_SSL_VERIFY"] = "1"
-os.environ["HF_HUB_OFFLINE"] = "1"
+# 说明: 如网络受限可取消下面两行注释（HF 下载模型用）
+# os.environ["HF_HUB_DISABLE_SSL_VERIFY"] = "1"
+# os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 import hashlib
 import glob
@@ -19,11 +18,12 @@ class ObsidianVectorStore:
         class LocalEmbeddingFunction(embedding_functions.EmbeddingFunction):
             def __init__(self):
                 from sentence_transformers import SentenceTransformer
-                # local_files_only=True 强制仅用本地缓存，不联网
-                self.model = SentenceTransformer(
-                    'all-MiniLM-L6-v2',
-                    local_files_only=True
-                )
+                # 优先本地缓存；缺失时自动联网下载（首次运行约 90MB）
+                try:
+                    self.model = SentenceTransformer('all-MiniLM-L6-v2', local_files_only=True)
+                except Exception:
+                    print('   [向量库] 本地无模型缓存，自动下载 all-MiniLM-L6-v2 ...')
+                    self.model = SentenceTransformer('all-MiniLM-L6-v2')
             def __call__(self, texts):
                 if isinstance(texts, str):
                     texts = [texts]

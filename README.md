@@ -189,7 +189,7 @@ pytest tests/ -v         # 测试：7/7 通过 ✅
 
 ```powershell
 # 08:00 / 14:20 / 20:00
-cd G:\ai软件\git\zhipu manage && python src\main.py --batch
+cd AI-note-pipeline && python src\main.py --batch
 ```
 
 或运行 `create_task.ps1` 一键创建。
