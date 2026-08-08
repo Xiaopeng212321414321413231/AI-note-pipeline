@@ -37,7 +37,17 @@ def fetch_rss(url):
       s = (e.get("summary") or "").strip()
       s = re2.sub(r"<[^>]+>","",s).strip()
       t = s.split("\n")[0][:80] if s else f"文章 {datetime.now():%m-%d}"
-    r.append({"title":t,"url":e.get("link",""),"source":getattr(e,"author","")})
+    # 提取RSS自带的正文和摘要
+    content_list = e.get("content") or []
+    summary_raw = e.get("summary") or ""
+    entry = {
+      "title":t,
+      "url":e.get("link",""),
+      "source":getattr(e,"author",""),
+      "rss_content": content_list,
+      "rss_summary": summary_raw,
+    }
+    r.append(entry)
   return r
 
 def fetch_jqzx():
@@ -69,7 +79,11 @@ def run():
       u_norm = u.rstrip("/").lower()
       qk=hashlib.md5(u_norm.encode()).hexdigest()
       if qk not in q:
-        q[qk]={"title":t,"url":u,"source":a.get("source",""),"status":"待处理"}; n+=1
+        item={"title":t,"url":u,"source":a.get("source",""),"status":"待处理"}
+        # RSS 自带内容（避免后续重复下载）
+        if a.get("rss_content"): item["rss_content"]=a["rss_content"]
+        if a.get("rss_summary"): item["rss_summary"]=a["rss_summary"]
+        q[qk]=item; n+=1
   save(DEDUP,d); save(QUEUE,q)
   p=sum(1 for v in q.values() if v["status"]=="待处理")
   print(f"\n📊 新:{n} | 去重:{len(d)} | 队列待:{p}")
@@ -84,8 +98,18 @@ def proc(limit=None):
   for k in keys:
     a=p[k]; t=a["title"]; print(f"   🔄 {t[:40]}... ",end="",flush=True)
     try:
-      from src.main import process_url
-      r=process_url(a["url"])  # 去重由队列保证
+      # 如果有 RSS 自带内容，直接用 article_extractor（走降级链 Level 1-2）
+      if a.get("rss_content") or a.get("rss_summary"):
+        from src.article_extractor import extract_article
+        rss_entry = {
+          "title": a["title"],
+          "content": a.get("rss_content", []),
+          "summary": a.get("rss_summary", ""),
+        }
+        r=extract_article(a["url"], rss_entry=rss_entry)
+      else:
+        from src.main import process_url
+        r=process_url(a["url"])  # 去重由队列保证
       time.sleep(2); q[k]["status"]="已完成"; q[k]["done_at"]=datetime.now().isoformat()
       q[k]["result"]=str(r)[:100]; print("✅"); done+=1
     except Exception as e:

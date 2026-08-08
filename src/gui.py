@@ -9,7 +9,7 @@ import threading
 import time
 import logging
 from tkinter import *
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, scrolledtext, messagebox, filedialog
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -18,14 +18,29 @@ from src.checkpoint import (
     load, get_interrupted, get_errors, get_pending,
     summary, clear_all, STAGES, STAGE_NAMES,
 )
-from src.main import run_pipeline, process_input_dir, resume_interrupted
+from src.main import run_pipeline, process_input_dir, resume_interrupted, process_file
 from src import rss_importer
+
+# -*- supported formats -*-
+SUPPORTED_FORMATS = {
+    '\u56fe\u7247': ['.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'],
+    'PDF':  ['.pdf'],
+    '\u97f3\u9891': ['.mp3', '.wav', '.m4a', '.flac', '.aac', '.ogg', '.amr'],
+    '\u89c6\u9891': ['.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.ts', '.m4v', '.mpg', '.mpeg'],
+    '\u6587\u6863': ['.docx'],
+    '\u6587\u672c': ['.md', '.txt'],
+}
+ALL_EXTS = [ext for exts in SUPPORTED_FORMATS.values() for ext in exts]
+
+def is_supported(file_path):
+    ext = os.path.splitext(file_path)[1].lower()
+    return ext in ALL_EXTS
 
 class PipelineGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("AI 笔记流水线 v2.0")
-        self.root.geometry("700x580")
+        self.root.geometry("700x750")
         self.root.resizable(True, True)
 
         # 设置样式
@@ -36,6 +51,8 @@ class PipelineGUI:
         # 运行状态
         self.running = False
         self.stop_flag = False
+        self.selected_file = None
+        self.selected_files = []
 
         self._build_ui()
         self._refresh_status()
@@ -52,8 +69,157 @@ class PipelineGUI:
         main_frame = Frame(self.root, bg="#f0f0f0", padx=15, pady=10)
         main_frame.pack(fill=X)
 
-        # --- 📁 本地文件处理 ---
-        Label(main_frame, text="📁 本地文件处理", bg="#f0f0f0",
+        # ── 📎 文件选择处理（内嵌浏览器） ──
+        Label(main_frame, text='📎 文件选择处理', bg='#f0f0f0',
+              font=('Microsoft YaHei', 11, 'bold'),
+              fg='#2b3e4f', anchor='w').pack(fill=X, pady=(0, 3))
+
+        file_btn_frame = Frame(main_frame, bg='#f0f0f0')
+        file_btn_frame.pack(fill=X, pady=(0, 5))
+
+        self.toggle_btn = Button(
+            file_btn_frame,
+            text='📂 打开文件浏览器',
+            command=self._toggle_browser,
+            bg='#3498db', fg='white',
+            font=('Microsoft YaHei', 11, 'bold'),
+            padx=20, pady=8,
+            cursor='hand2',
+            relief=FLAT,
+            activebackground='#2980b9',
+            activeforeground='white',
+        )
+        self.toggle_btn.pack(side=LEFT)
+
+        self.process_file_btn = Button(
+            file_btn_frame,
+            text='▶ 处理选中文件',
+            command=self._process_selected_file,
+            bg='#27ae60', fg='white',
+            font=('Microsoft YaHei', 11, 'bold'),
+            padx=20, pady=8,
+            cursor='hand2',
+            relief=FLAT,
+            state=DISABLED,
+            activebackground='#2ecc71',
+            activeforeground='white',
+        )
+        self.process_file_btn.pack(side=LEFT, padx=(10, 0))
+
+        self.rewrite_var = BooleanVar(value=True)
+        self.rewrite_check = Checkbutton(
+            file_btn_frame,
+            text='🔁 AI 重写',
+            variable=self.rewrite_var,
+            bg='#f0f0f0',
+            fg='#2b3e4f',
+            font=('Microsoft YaHei', 9, 'bold'),
+            selectcolor='#eaf6ea',
+            activebackground='#f0f0f0',
+            activeforeground='#27ae60',
+            cursor='hand2',
+        )
+        self.rewrite_check.pack(side=LEFT, padx=(12, 0))
+
+        # ── 内嵌文件浏览器面板（初始隐藏） ──
+        self.browser_frame = Frame(main_frame, bg='#ffffff', padx=8, pady=6,
+                                   highlightbackground='#3498db', highlightthickness=1)
+        self.browser_frame.pack(fill=X, pady=(5, 5))
+        self.browser_frame.pack_forget()
+
+        # 路径栏
+        path_bar = Frame(self.browser_frame, bg='#ffffff')
+        path_bar.pack(fill=X, pady=(0, 4))
+        Label(path_bar, text='📁 路径:', bg='#ffffff',
+              font=('Microsoft YaHei', 9)).pack(side=LEFT)
+        self.path_entry = Entry(path_bar, font=('Microsoft YaHei', 9))
+        self.path_entry.pack(side=LEFT, fill=X, expand=True, padx=(0, 5))
+        self.go_btn = Button(path_bar, text='前往', command=self._goto_path,
+                             bg='#3498db', fg='white', font=('Microsoft YaHei', 9),
+                             padx=8, pady=2, relief=FLAT, cursor='hand2')
+        self.go_btn.pack(side=LEFT, padx=(0, 3))
+        self.up_btn = Button(path_bar, text='⬆ 上级', command=self._go_up,
+                             bg='#95a5a6', fg='white', font=('Microsoft YaHei', 9),
+                             padx=8, pady=2, relief=FLAT, cursor='hand2')
+        self.up_btn.pack(side=LEFT)
+
+        # 文件树
+        tree_frame = Frame(self.browser_frame, bg='#ffffff')
+        tree_frame.pack(fill=X, pady=(0, 4))
+        self.file_tree = ttk.Treeview(
+            tree_frame, columns=('size', 'mtime'),
+            show='tree headings', height=10, selectmode='extended',
+        )
+        self.file_tree.heading('#0', text='名称')
+        self.file_tree.heading('size', text='大小')
+        self.file_tree.heading('mtime', text='修改时间')
+        self.file_tree.column('#0', width=280, anchor='w')
+        self.file_tree.column('size', width=80, anchor='e')
+        self.file_tree.column('mtime', width=140, anchor='w')
+        self.file_tree.pack(fill=X)
+        self.file_tree.bind('<Double-1>', self._on_tree_double_click)
+
+        # 操作按钮
+        act_bar = Frame(self.browser_frame, bg='#ffffff')
+        act_bar.pack(fill=X)
+        self.add_files_btn = Button(
+            act_bar, text='➕ 添加选中文件', command=self._add_selected_files,
+            bg='#27ae60', fg='white', font=('Microsoft YaHei', 9, 'bold'),
+            padx=12, pady=4, relief=FLAT, cursor='hand2',
+        )
+        self.add_files_btn.pack(side=LEFT)
+        self.clear_sel_btn = Button(
+            act_bar, text='🗑 清空已选', command=self._clear_selected,
+            bg='#e74c3c', fg='white', font=('Microsoft YaHei', 9),
+            padx=12, pady=4, relief=FLAT, cursor='hand2',
+        )
+        self.clear_sel_btn.pack(side=LEFT, padx=(5, 0))
+
+        # ── 已选文件列表 ──
+        self.sel_frame = Frame(main_frame, bg='#ffffff', padx=10, pady=6,
+                               highlightbackground='#27ae60', highlightthickness=1)
+        self.sel_frame.pack(fill=X, pady=(5, 2))
+        self.sel_frame.pack_forget()
+
+        self.sel_label = Label(self.sel_frame, text='📋 已选文件 (0)',
+                               bg='#ffffff', fg='#2b3e4f',
+                               font=('Microsoft YaHei', 10, 'bold'), anchor='w')
+        self.sel_label.pack(fill=X, pady=(0, 3))
+
+        self.sel_listbox = Listbox(self.sel_frame, height=4, font=('Consolas', 9),
+                                   bg='#fafafa', fg='#333', selectmode='single',
+                                   exportselection=False)
+        self.sel_listbox.pack(fill=X)
+        self.sel_listbox.bind('<Double-1>', self._remove_selected_item)
+
+        # 状态卡片
+        self.file_info_frame = Frame(main_frame, bg='#ffffff', padx=10, pady=6,
+                                      highlightbackground='#ddd', highlightthickness=1)
+        self.file_info_frame.pack(fill=X, pady=(5, 2))
+
+        self.file_status_icon = Label(self.file_info_frame, text='💤', bg='#ffffff',
+                                       font=('Segoe UI Emoji', 14))
+        self.file_status_icon.pack(side=LEFT, padx=(0, 8))
+
+        self.file_info_label = Label(self.file_info_frame,
+                                      text='尚未选择文件',
+                                      bg='#ffffff', fg='#888',
+                                      font=('Microsoft YaHei', 9),
+                                      anchor='w', justify=LEFT)
+        self.file_info_label.pack(side=LEFT, fill=X, expand=True)
+
+        # 支持的格式说明
+        fmt_parts = []
+        for k, v in SUPPORTED_FORMATS.items():
+            fmt_parts.append(f'{k}({chr(44).join(v)})')
+        fmt_text = '支持: ' + ' | '.join(fmt_parts)
+        Label(main_frame, text=fmt_text, bg='#f0f0f0',
+              fg='#aaa', font=('Microsoft YaHei', 7), anchor='w').pack(fill=X, pady=(1, 8))
+
+        ttk.Separator(main_frame, orient=HORIZONTAL).pack(fill=X, pady=(0, 8))
+
+        # --- 📁 批量处理（input/ 目录） ---
+        Label(main_frame, text="📁 批量处理（input/ 目录）", bg="#f0f0f0",
               font=("Microsoft YaHei", 11, "bold"),
               fg="#2b3e4f", anchor="w").pack(fill=X, pady=(0, 3))
         btn_frame = Frame(main_frame, bg="#f0f0f0")
@@ -61,7 +227,7 @@ class PipelineGUI:
 
         self.start_btn = Button(
             btn_frame,
-            text="▶  开始处理",
+            text="▶  批量处理",
             command=self._start_pipeline,
             bg="#27ae60", fg="white",
             font=("Microsoft YaHei", 14, "bold"),
@@ -99,8 +265,6 @@ class PipelineGUI:
             activebackground="#2980b9",
             activeforeground="white",
         )
-        self.status_btn.pack(side=LEFT)
-
         self.status_btn.pack(side=LEFT)
 
         self.retry_btn = Button(
@@ -233,6 +397,211 @@ class PipelineGUI:
         self.bottom_bar.pack(fill=X, side=BOTTOM)
 
 
+
+    # ══════════════════════════════════════════
+    # 📎 文件选择处理（内嵌浏览器）
+    # ══════════════════════════════════════════
+
+    def _toggle_browser(self):
+        """展开/收起内嵌文件浏览器"""
+        if self.browser_frame.winfo_ismapped():
+            self.browser_frame.pack_forget()
+            self.toggle_btn.config(text='📂 打开文件浏览器')
+        else:
+            self.browser_frame.pack(fill=X, pady=(5, 5))
+            self.toggle_btn.config(text='🗂 收起文件浏览器')
+            if not hasattr(self, 'current_dir'):
+                self.current_dir = os.path.expanduser('~/Desktop')
+                self.selected_files = []
+                self._load_dir(self.current_dir)
+
+    def _load_dir(self, path):
+        """加载目录到文件树"""
+        path = os.path.abspath(path)
+        if not os.path.isdir(path):
+            self._log(f'⚠️ 目录不存在: {path}')
+            return
+        self.current_dir = path
+        self.path_entry.delete(0, END)
+        self.path_entry.insert(0, path)
+        self.file_tree.delete(*self.file_tree.get_children())
+        try:
+            items = sorted(os.listdir(path), key=str.lower)
+        except PermissionError:
+            self._log(f'⚠️ 无权限访问: {path}')
+            return
+        for name in items:
+            if name.startswith('.') or name == 'desktop.ini':
+                continue
+            full = os.path.join(path, name)
+            try:
+                is_dir = os.path.isdir(full)
+                size = '' if is_dir else self._fmt_size(os.path.getsize(full))
+                mtime = time.strftime('%Y-%m-%d %H:%M',
+                                      time.localtime(os.path.getmtime(full)))
+            except OSError:
+                continue
+            icon = '📁' if is_dir else self._file_icon(full)
+            self.file_tree.insert('', 'end', iid=full,
+                                  text=f'{icon} {name}',
+                                  values=(size, mtime), open=False)
+
+    def _fmt_size(self, n):
+        for unit in ('B', 'KB', 'MB', 'GB'):
+            if n < 1024:
+                return f'{n:.0f}{unit}' if unit == 'B' else f'{n:.1f}{unit}'
+            n /= 1024
+        return f'{n:.1f}TB'
+
+    def _file_icon(self, path):
+        ext = os.path.splitext(path)[1].lower()
+        if ext in ('.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.webp'):
+            return '🖼️'
+        if ext == '.pdf':
+            return '📕'
+        if ext in ('.mp3', '.wav', '.m4a', '.flac', '.aac', '.ogg', '.amr'):
+            return '🎵'
+        if ext == '.docx':
+            return '📄'
+        if ext in ('.md', '.txt'):
+            return '📝'
+        return '📄'
+
+    def _goto_path(self):
+        p = self.path_entry.get().strip()
+        if p:
+            self._load_dir(p)
+
+    def _go_up(self):
+        parent = os.path.dirname(self.current_dir)
+        if parent and parent != self.current_dir:
+            self._load_dir(parent)
+
+    def _on_tree_double_click(self, event):
+        item = self.file_tree.focus()
+        if not item:
+            return
+        if os.path.isdir(item):
+            self._load_dir(item)
+        else:
+            self._add_paths([item])
+
+    def _add_selected_files(self):
+        sel = self.file_tree.selection()
+        if not sel:
+            messagebox.showinfo('提示', '请先在文件列表中选中文件')
+            return
+        files = [i for i in sel if os.path.isfile(i)]
+        self._add_paths(files)
+
+    def _add_paths(self, paths):
+        added = 0
+        for p in paths:
+            if p in self.selected_files:
+                continue
+            self.selected_files.append(p)
+            self.sel_listbox.insert(END, os.path.basename(p))
+            added += 1
+        if added:
+            self._update_sel_status()
+            self._log(f'➕ 已添加 {added} 个文件')
+
+    def _clear_selected(self):
+        self.selected_files = []
+        self.sel_listbox.delete(0, END)
+        self._update_sel_status()
+        self._log('🗑 已清空选中文件')
+
+    def _remove_selected_item(self, event):
+        idx = self.sel_listbox.curselection()
+        if idx:
+            self.selected_files.pop(idx[0])
+            self.sel_listbox.delete(idx[0])
+            self._update_sel_status()
+
+    def _update_sel_status(self):
+        n = len(self.selected_files)
+        self.sel_label.config(text=f'📋 已选文件 ({n})')
+        if n > 0:
+            self.sel_frame.pack(fill=X, pady=(5, 2))
+            self.sel_frame.pack_propagate(False)
+            unsupported = [p for p in self.selected_files if not is_supported(p)]
+            if unsupported:
+                exts = sorted({os.path.splitext(p)[1].lower() for p in unsupported})
+                self.file_status_icon.config(text='⛔')
+                self.file_info_label.config(
+                    text=f'{n} 个文件，其中 {len(unsupported)} 个不兼容 ({",".join(exts)})',
+                    fg='#e74c3c'
+                )
+                self.file_info_frame.config(highlightbackground='#e74c3c')
+                self.process_file_btn.config(state=NORMAL)
+            else:
+                self.file_status_icon.config(text='✅')
+                self.file_info_label.config(
+                    text=f'{n} 个文件，全部兼容 ✓',
+                    fg='#27ae60'
+                )
+                self.file_info_frame.config(highlightbackground='#27ae60')
+                self.process_file_btn.config(state=NORMAL)
+        else:
+            self.sel_frame.pack_forget()
+            self.file_status_icon.config(text='💤')
+            self.file_info_label.config(text='尚未选择文件', fg='#888')
+            self.file_info_frame.config(highlightbackground='#ddd')
+            self.process_file_btn.config(state=DISABLED)
+
+    def _process_selected_file(self):
+        """处理所有已选文件"""
+        if not self.selected_files:
+            messagebox.showinfo('提示', '请先选择文件')
+            return
+        if self.running:
+            messagebox.showinfo('提示', '流水线正在运行中')
+            return
+
+        self.running = True
+        self.process_file_btn.config(text='⏹  处理中...', bg='#e67e22', state=DISABLED)
+        self.toggle_btn.config(state=DISABLED)
+        self.start_btn.config(state=DISABLED)
+        self.bottom_bar.config(text='正在处理选中文件...')
+
+        self._log('=' * 50)
+        self._log(f'📎 开始处理 {len(self.selected_files)} 个选中文件')
+
+        files = list(self.selected_files)
+
+        def run():
+            self._setup_log_redirect()
+            done = 0
+            skipped = 0
+            for fp in files:
+                self._log(f'➡ 处理: {os.path.basename(fp)}')
+                if not is_supported(fp):
+                    ext = os.path.splitext(fp)[1].lower()
+                    self._log(f'⛔ 流水线不兼容，跳过: {ext} 格式')
+                    skipped += 1
+                    continue
+                try:
+                    process_file(fp, rewrite=self.rewrite_var.get())
+                    done += 1
+                except Exception as e:
+                    self._log(f'❌ 处理失败: {e}')
+            self._log(f'✅ 完成: {done} 个成功, {skipped} 个不兼容跳过')
+            self._restore_log_redirect()
+            self.root.after(0, self._on_file_done)
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def _on_file_done(self):
+        """选中文件处理完成后的 UI 更新"""
+        self.running = False
+        self.process_file_btn.config(text='▶ 处理选中文件', bg='#27ae60', state=NORMAL)
+        self.toggle_btn.config(state=NORMAL)
+        self.start_btn.config(state=NORMAL)
+        self.bottom_bar.config(text='就绪')
+        self._log('=' * 50)
+        self._refresh_status()
+
     def _retry_errors(self):
         """将 error 文件夹的文件移回 input 并开始处理"""
         import shutil
@@ -309,10 +678,14 @@ class PipelineGUI:
 
         self.running = True
         self.stop_flag = False
+        self.selected_file = None
+        self.selected_files = []
         self.start_btn.config(text="⏹  处理中...", bg="#e67e22", state=NORMAL)
         self.clear_btn.config(state=DISABLED)
         self.resume_btn.config(state=DISABLED)
         self.skip_resume_btn.config(state=DISABLED)
+        self.toggle_btn.config(state=DISABLED)
+        self.process_file_btn.config(state=DISABLED)
         self.bottom_bar.config(text="正在运行...")
 
         self._log("=" * 50)
@@ -346,10 +719,12 @@ class PipelineGUI:
     def _on_pipeline_done(self):
         """流水线完成后的 UI 更新"""
         self.running = False
-        self.start_btn.config(text="▶  开始处理", bg="#27ae60", state=NORMAL)
+        self.start_btn.config(text="▶  批量处理", bg="#27ae60", state=NORMAL)
         self.clear_btn.config(state=NORMAL)
         self.resume_btn.config(state=NORMAL)
         self.skip_resume_btn.config(state=NORMAL)
+        self.toggle_btn.config(state=NORMAL)
+        self.process_file_btn.config(state=NORMAL)
         self.bottom_bar.config(text="就绪")
         self._refresh_status()
         self._log("\n✅ 流水线完成")

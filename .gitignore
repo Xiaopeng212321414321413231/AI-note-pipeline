@@ -51,3 +51,10 @@ AI生成笔记/
 ai软件/
 
 _patch_docx.py
+
+# 临时修补脚本
+_rss_patch.py
+_patch_docx.py
+
+# Obsidian 输出（本地生成，不共享）
+流水线日报/

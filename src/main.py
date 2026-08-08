@@ -32,7 +32,8 @@ load_dotenv()
 
 from ocr import extract_text_from_image
 
-from transcriber import transcribe_audio
+# 延迟导入（transcriber 需要 faster-whisper，GUI 启动时不想强制加载）
+_transcriber_loaded = False
 
 from ai_rewrite import rewrite_text_with_ai, classify_topic, repair_ocr_text
 
@@ -46,6 +47,7 @@ from healthcheck import run_all as healthcheck
 
 from config import (
     ZHIPUAI_API_KEY, OBSIDIAN_VAULT_PATH, OUTPUT_DIR,
+    WEB_OUTPUT_DIR, LOCAL_OUTPUT_DIR, REPORT_OUTPUT_DIR,
     TESSERACT_PATH, CHROMA_DB_PATH, INPUT_DIR,
     TAVILY_API_KEY,
 )
@@ -53,6 +55,9 @@ from config import (
 import re
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(WEB_OUTPUT_DIR, exist_ok=True)
+os.makedirs(LOCAL_OUTPUT_DIR, exist_ok=True)
+os.makedirs(REPORT_OUTPUT_DIR, exist_ok=True)
 
 os.makedirs(INPUT_DIR, exist_ok=True)
 
@@ -148,7 +153,13 @@ def extract_text_from_file(file_path: str, clean_only: bool = False) -> str:
 
         print(f"   [音频] 音频转写...")
 
+        from transcriber import transcribe_audio
         return transcribe_audio(file_path)
+
+    elif ext in ('.mp4', '.mkv', '.avi', '.mov', '.flv', '.wmv', '.webm', '.ts', '.m4v', '.mpg', '.mpeg'):
+        print(f"   [视频] 视频提取（ffmpeg音频 → Whisper转写，与B站同款链路）...")
+        from video_extractor import extract_local_video
+        return extract_local_video(file_path)
 
     elif ext == '.docx':
 
@@ -358,6 +369,12 @@ def process_content(raw_text: str, source_name: str) -> str:
 def save_result(content, filename="", html_title=None, url=""):
     if not content:
         return ""
+    # 2026-08-05: 按来源分流 — 网页→AI生成笔记, 本地→本地转写
+    if url:
+        target_dir = WEB_OUTPUT_DIR
+    else:
+        target_dir = LOCAL_OUTPUT_DIR
+    os.makedirs(target_dir, exist_ok=True)
     title = html_title if html_title else (filename if filename else "未命名")
     from html import escape
     today_date = datetime.now().strftime("%Y-%m-%d")
@@ -367,9 +384,20 @@ def save_result(content, filename="", html_title=None, url=""):
     safe = safe.rstrip(".")
     filename_final = f"{today_date}-{safe}.md"
     yt = title.replace(chr(34), chr(92)+chr(34))
-    frontmatter = f"---\ntitle: \"{yt}\"\ndate: {today_date}\ntags: [rss, ai-generated]\n---\n\n"
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
-    full_path = os.path.join(OUTPUT_DIR, filename_final)
+    # 多维表格 frontmatter：含 type/status 等字段，供 Obsidian Dataview/Projects 读取
+    frontmatter = (
+        f"---\n"
+        f'title: "{yt}"\n'
+        f"date: {today_date}\n"
+        f"type: 日报\n"
+        f"status: 已学\n"
+        f"level: 入门\n"
+        f"tools: []\n"
+        f"tags: [rss, ai-generated, AI日报]\n"
+        f"---\n\n"
+    )
+    os.makedirs(target_dir, exist_ok=True)
+    full_path = os.path.join(target_dir, filename_final)
     with open(full_path, "w", encoding="utf-8") as f:
         f.write(frontmatter + content)
     print(f"[save] {filename_final}")
@@ -385,7 +413,7 @@ def save_result(content, filename="", html_title=None, url=""):
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry, ensure_ascii=False) + chr(10))
     return full_path
-def process_file(file_path: str):
+def process_file(file_path: str, rewrite: bool = True):
 
     file_name = os.path.basename(file_path)
 
@@ -443,6 +471,20 @@ def process_file(file_path: str):
 
             _archive_file(file_path, "done")
 
+            return
+
+        # 非重写模式：直接保存原文（跳过分类/AI重写，绝不丢弃）
+        if not rewrite:
+            base_name = os.path.splitext(file_name)[0]
+            print(f"   [模式] 不重写 — 直接保存原文 ({len(raw_text)} 字)")
+            save_result(raw_text, f"{base_name}.md")
+            try:
+                vs = get_vector_store()
+                doc_id = f"local_{base_name[:20]}_{datetime.now().strftime('%Y%m%d')}"
+                vs.add_document(raw_text, doc_id, {"file": file_name, "source": "local"})
+            except Exception:
+                pass
+            _archive_file(file_path, "done")
             return
 
         result = process_content(raw_text, file_name)
@@ -561,11 +603,32 @@ def _html_to_markdown(html):
 
     return text.strip()
 
+_BILI_RE = re.compile(r'https?://(?:www\.)?bilibili\.com/video/', re.I)
+
+def _is_bilibili_url(url: str) -> bool:
+    """判断URL是否为B站视频链接"""
+    return bool(_BILI_RE.search(url))
+
 def process_url(url: str):
-
     """Process URL with fallback and title extraction"""
-
     from urllib.request import Request, urlopen
+
+    # ── B站视频：走 video_extractor 降级链 ──
+    if _is_bilibili_url(url):
+        from src.video_extractor import extract_video
+        result = extract_video(url)
+        if result.get("available"):
+            title = result.get("video_info", {}).get("title", "B站视频")
+            text = result.get("text", "")
+            source_info = result.get("source", "")
+            level = result.get("level", "0")
+            print(f"  [B站] {title[:40]} — {source_info} (Level {level}, {len(text)}字)")
+            # 用 markdown 包装后走全流水线
+            NL = "\n"
+            full_text = f"# {title}{NL}{NL}来源：B站 ({source_info}){NL}{NL}{text}"
+            return process_content(full_text, f"bilibili_{result.get('bvid', '')}")
+        print(f"  [B站] 提取失败: {result.get('error', '')}")
+        return
 
     name = hashlib.md5(url.encode()).hexdigest()[:8]
 
@@ -691,15 +754,15 @@ def process_input_dir():
 
     process_batch()
 
-    # 统计已归档到 output 的数量
+    # 统计已归档到本地转写目录的数量
 
     count = 0
 
-    if os.path.exists(OUTPUT_DIR):
+    if os.path.exists(LOCAL_OUTPUT_DIR):
 
-        count = len([f for f in os.listdir(OUTPUT_DIR)
+        count = len([f for f in os.listdir(LOCAL_OUTPUT_DIR)
 
-                     if f.endswith('.md') and os.path.isfile(os.path.join(OUTPUT_DIR, f))])
+                     if f.endswith('.md') and os.path.isfile(os.path.join(LOCAL_OUTPUT_DIR, f))])
 
     return count
 
@@ -786,6 +849,8 @@ def main():
 
     parser.add_argument("--batch", action="store_true", help="批量处理 input/")
 
+    parser.add_argument("--daily", action="store_true", help="每日任务：RSS扫描→下载队列→处理本地文件")
+
     args = parser.parse_args()
 
     if args.file:
@@ -802,7 +867,28 @@ def main():
 
         start_watcher(INPUT_DIR)
 
-    else:
+    elif args.daily:
+
+        print("\n=== 每日任务 ===\n")
+
+        from src import rss_importer
+
+        print("1/3 扫描 RSS 源...")
+        rss_importer.run()
+
+        print("\n2/3 下载队列文章...")
+        rss_importer.proc()
+
+        print("\n3/3 处理本地文件...")
+        process_input_dir()
+
+        print("\n4/4 生成日报...")
+        try:
+            import daily_report
+        except Exception as e:
+            print(f"⚠️ 日报生成失败: {e}")
+
+        print("\n=== 每日任务完成 ===")
 
         process_batch()
 

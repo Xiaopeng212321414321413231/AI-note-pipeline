@@ -74,7 +74,9 @@ def rewrite_text_with_ai(api_key, clean_text, reference_notes=None, topic_info=N
 3. 保留原文图片引用
 4. 原文中最重要的 1-3 个句子，在中文翻译中用 **加粗** 强调
 5. 关键术语首次出现时标注英文原文
-6. 不要添加原文没有的内容
+6. 【新增】保留原文所有代码块，用 ``` 包裹，代码不翻译、不改写、不总结
+7. 【新增】保留原文所有数学公式和推导过程，公式不删减、不简化
+8. 不要添加原文没有的内容
 
 【富文本格式要求】
 - 使用 **加粗** 强调关键术语、数字、重要结论
@@ -89,11 +91,13 @@ def rewrite_text_with_ai(api_key, clean_text, reference_notes=None, topic_info=N
 
     system_prompt = f"你是一个有技术深度、有个性观点的写手。\n\n{system_rules}"
 
-    user_prompt = ""
+
+    user_prompt = f"【需要重写的原文】\n{clean_text}\n\n"
     if ref_text:
         user_prompt += f"【参考笔记风格】\n{ref_text}\n\n"
+    if web_context:
+        user_prompt += f"【联网背景信息】\n{web_context[:500]}\n\n"
     user_prompt += "===== 重要命令 =====\n你必须输出中英双语对照文本：\n每段英文原文后，用 > 引用在其中，> 中文翻译紧跟在下面。\n\n"
-
     return _call_zhipu(api_key, [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt}

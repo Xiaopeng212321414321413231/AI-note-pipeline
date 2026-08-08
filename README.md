@@ -1,4 +1,4 @@
-# AI 多模态笔记处理流水线 v2.6
+# AI 多模态笔记处理流水线 v2.7
 
 > 图片/PDF/Word/音频/网页 → OCR/ASR → 向量检索+联网补充 → AI 中英双语重写 → Obsidian 归档
 
@@ -17,6 +17,8 @@
 | Word 文档 | .docx 文字 + 内嵌图片 OCR（GLM-4V 并发识别） |
 | 音频转写 | faster-whisper tiny CPU int8，>5min 自动切片 |
 | 网页抓取 | Jina Reader → 原生 urllib fallback |
+| 文章降级提取 | 四级降级链：缓存 → RSS摘要 → Jina → HTML（article_extractor） |
+| B站视频处理 | 五级降级链：字幕缓存 → CC字幕 → AI字幕 → Whisper转写 → 元数据（video_extractor） |
 | 文本/Markdown | 直接读取 .txt / .md |
 | RSS 订阅 | 量子位 / 机器之心 / Karpathy / Sam Altman / 知乎专栏 |
 | 话题分类 | glm-4-flash 自动三级分类（skip / save_only / deep_rewrite） |
